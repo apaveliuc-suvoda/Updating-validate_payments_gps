@@ -13,11 +13,8 @@ if __name__ == '__main__':
 from django.db import transaction
 from django.contrib.auth import get_user_model
 
-from ecgps_core.models import User
-from helpers.exceptions import DryRunException
-from gpmodels.utils import AgencyContext
 from ecgps_core.models import PaymentFieldsConfig
-from ecgps_core.models import Study, Payment
+from ecgps_core.models import Study
 
 USER = get_user_model()
 HEADER = ['short_name', 'payment_group']
@@ -34,23 +31,22 @@ def upload_file(filepath, parser):
             csv_file.seek(start_position)
             
             csv_reader = csv.DictReader(csv_file)
+
+            # Sanitize the header
+            csv_reader.fieldnames = [field_name.strip().lower() for field_name in csv_reader.fieldnames]
+
+            # Check if the header is conform with the header template
+            if not set(HEADER).issubset(set(csv_reader.fieldnames)):
+                parser.exit(f'Error: Wrong header. Expected header: {', '.join(HEADER)}')
             
             # Filter the records
             rows = []
             for raw_record in csv_reader:
                 cleaned_record = {}
                 for field_name, cell_value in raw_record.items():
-                    field_name = field_name.strip().lower()
                     cell_value = cell_value.strip()
                     cleaned_record[field_name] = cell_value
                 rows.append(cleaned_record)
-
-            # Sanitize the header
-            header = [field_name.strip().lower() for field_name in csv_reader.fieldnames]
-
-            # Check if the header is conform with the header template
-            if not set(HEADER).issubset(set(header)):
-                parser.exit(f'Error: Wrong header. Expected header: {', '.join(HEADER)}')
                 
         return rows
     
@@ -59,7 +55,7 @@ def upload_file(filepath, parser):
     except PermissionError:
         parser.exit('Error: Permission denied')
     except UnicodeDecodeError:
-        parser.exit('Error: Can not be decoded. The expected decoder is ANSI')
+        parser.exit('Error: Can not be decoded')
 
 def main(args, parser):
 
@@ -99,5 +95,5 @@ if __name__ == '__main__':
         required=True)
 
     args = parser.parse_args()
-    AGENT = User.objects.get(email=args.user)
-    main(args)
+    AGENT = USER.objects.get(email=args.user)
+    main(args, parser)
