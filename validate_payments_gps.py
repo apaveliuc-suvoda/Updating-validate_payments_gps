@@ -15,6 +15,7 @@ from django.contrib.auth import get_user_model
 
 from ecgps_core.models import PaymentFieldsConfig
 from ecgps_core.models import Study
+from conf.otel import init_opentelemetry
 
 USER = get_user_model()
 HEADER = ['short_name', 'payment_group']
@@ -37,7 +38,7 @@ def upload_file(filepath, parser):
 
             # Check if the header is conform with the header template
             if not set(HEADER).issubset(set(csv_reader.fieldnames)):
-                parser.exit(f'Error: Wrong header. Expected header: {', '.join(HEADER)}')
+                parser.exit(f"Error: Wrong header. Expected header: {', '.join(HEADER)}")
             
             # Filter the records
             rows = []
@@ -59,7 +60,7 @@ def upload_file(filepath, parser):
 
 def main(args, parser):
 
-    rows = upload_file(args.filepath, parser)
+    rows = upload_file(args.upload_file, parser)
     for row in rows:
         study = Study.objects.get(protocol=args.protocol)
         short_name = row['short_name']
@@ -73,6 +74,12 @@ def main(args, parser):
 
 if __name__ == '__main__':
 
+    init_opentelemetry(
+        resource_attrs={
+            "service.name": "suvoda.site-payments",
+            "service.subtype": "support",
+        })
+
     parser = argparse.ArgumentParser(description=('description'))
     parser.add_argument(
         '--user', 
@@ -81,7 +88,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--upload_file',
-        help=f'The file path of the upload file. Expected header: {', '.join(HEADER)})',
+        help=f"The file path of the upload file. Expected header: {', '.join(HEADER)})",
         required=True,
     )
     parser.add_argument(
