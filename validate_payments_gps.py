@@ -65,12 +65,13 @@ def main(args, parser):
         study = Study.objects.get(protocol=args.protocol)
         short_name = row['short_name']
         payment_group = row['payment_group']
-        pfc = PaymentFieldsConfig.objects.get(study=study, short_name=short_name, payment_group_name=payment_group)
+        pfcs = PaymentFieldsConfig.objects.filter(study=study, short_name=short_name, payment_group_name=payment_group)
 
-        if pfc.payment_set.exists():
-            print(f'Fail : {pfc.id} : {short_name}. This Payment Schedule CANNOT be Deleted')
-        else:
-            print(f'Pass : {pfc.id} : {short_name}. This Payment Schedule CAN be Deleted')
+        for pfc in pfcs:
+            if pfc.payment_set.exists():
+                print(f'Fail : {pfc.id} : {short_name}. This Payment Schedule CANNOT be Deleted')
+            else:
+                print(f'Pass : {pfc.id} : {short_name}. This Payment Schedule CAN be Deleted')
 
 if __name__ == '__main__':
 
